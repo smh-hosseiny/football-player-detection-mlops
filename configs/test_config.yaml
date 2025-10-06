@@ -1,0 +1,22 @@
+model:
+  weights: "../models/best.pt"  # Path to your trained model weights
+  architecture: "yolo11n.pt"
+  img_size: 640
+  name: "object_detector_v1"
+
+data:
+  test_yaml_path: "../data/football_players_detection/data.yaml"  # Test dataset YAML
+
+device: "cuda:1"  # or "cpu" for evaluation
+
+output:
+  project_dir: "runs_detect"
+  model_dir: "./models"
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "object_detection"
+
+wandb:
+  enabled: false
+  project: "object-detection-mlops"

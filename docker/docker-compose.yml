@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    environment:
+      - BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db
+      - ARTIFACT_ROOT=/mlflow/artifacts
+    command: mlflow server --host 0.0.0.0 --port 5000
+    networks:
+      - mlops_network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - mlops_network
+    depends_on:
+      - mlflow
+prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - mlops_network
+
+grafana:
+  image: grafana/grafana:latest
+  ports:
+    - "3000:3000"
+  environment:
+    - GF_SECURITY_ADMIN_PASSWORD=admin
+  volumes:
+    - grafana_data:/var/lib/grafana
+  networks:
+    - mlops_network
+  depends_on:
+    - prometheus
+
+networks:
+  mlops_network:
+    driver: bridge
+
+volumes:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:

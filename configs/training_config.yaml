@@ -1,0 +1,30 @@
+model:
+  architecture: "yolo11n.pt"  # Medium model for balance
+  img_size: 640
+  name: "object_detector_v1"
+
+data:
+  yaml_path: "./src/data/football_players_detection/data.yaml"
+  train_path: "./src/data/football_players_detection/train/"
+  val_path: "./src/data/football_players_detection/valid/"
+  test_path: "./src/data/football_players_detection/test/"
+
+training:
+  batch_size: 16
+  epochs: 50
+  learning_rate: 0.001
+  early_stopping_patience: 10
+
+device: "cuda:1"  # or "cpu" for local testing
+
+output:
+  project_dir: "runs_detect"
+  model_dir: "./models"
+
+mlflow:
+  tracking_uri: "http://localhost:5000"  # Local for dev
+  experiment_name: "object_detection"
+
+wandb:
+  enabled: false
+  project: "object-detection-mlops"

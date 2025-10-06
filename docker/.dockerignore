@@ -1,0 +1,7 @@
+src/data/
+src/wandb/
+src/runs_detect/
+.gitignore
+.git
+pycache/
+*.ipynb_checkpoints

@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+src/data/*
+src/runs_detect/*
+src/wandb/*
+runs_detect/*
+wandb/*
+
 # Distribution / packaging
 .Python
 build/
@@ -119,6 +125,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+pycache/
+*.ipynb_checkpoints
 
 # Spyder project settings
 .spyderproject

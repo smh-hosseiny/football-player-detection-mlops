@@ -1,0 +1,32 @@
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    wget \
+    libgl1  \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy only necessary source
+COPY src/training/ ./src/training/
+COPY src/test/ ./src/test/
+COPY src/inference/ ./src/inference/
+COPY src/models/ ./src/models/
+COPY configs/ ./configs/
+COPY scripts/ ./scripts/
+
+ENV PYTHONPATH=/app
+ENV MLFLOW_TRACKING_URI=http://mlflow:5000
+
+# Default command (can be overridden at run)
+CMD ["python", "src/training/train.py", "--config", "configs/training_config.yaml"]
