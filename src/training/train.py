@@ -90,7 +90,9 @@ class YOLOTrainer:
             ):
                 # New model is better or no init checkpoint
                 shutil.copy(new_best_path, final_best_path)
-                print(f"✅ Replaced global best.pt with new model ({new_val_score:.4f})")
+                print(
+                    f"✅ Replaced global best.pt with new model ({new_val_score:.4f})"
+                )
             elif init_val_score is not None:
                 # Initial checkpoint is better — keep it
                 print(
