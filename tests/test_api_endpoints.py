@@ -1,10 +1,10 @@
 from fastapi.testclient import TestClient
 from api.main import app
-import io
-import pytest
+
 
 # Create a TestClient instance that will interact with your app
 client = TestClient(app)
+
 
 # Test for the root endpoint, which serves the HTML page.
 def test_read_root():
@@ -14,6 +14,7 @@ def test_read_root():
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
+
 
 # Test for the health check endpoint.
 def test_health_check():
@@ -26,6 +27,7 @@ def test_health_check():
     assert json_response["status"] == "healthy"
     assert "device" in json_response
 
+
 # Test for the main image prediction endpoint.
 def test_predict_endpoint():
     """
@@ -34,10 +36,7 @@ def test_predict_endpoint():
     """
     with open("assets/sample.jpg", "rb") as f:
         mock_file = ("sample.jpg", f, "image/jpeg")
-        response = client.post(
-            "/predict",
-            files={"file": mock_file}
-        )
+        response = client.post("/predict", files={"file": mock_file})
 
     # 1. Assert that the request was successful
     assert response.status_code == 200
@@ -62,8 +61,9 @@ def test_predict_endpoint_no_file():
     Tests that the API correctly handles requests with no file sent.
     It should return a 422 Unprocessable Entity error.
     """
-    response = client.post("/predict") # Corrected from "/predict/image"
+    response = client.post("/predict")  # Corrected from "/predict/image"
     assert response.status_code == 422
+
 
 # A basic test for the Prometheus metrics endpoint.
 def test_metrics_endpoint():
