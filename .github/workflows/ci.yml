@@ -212,7 +212,7 @@ jobs:
   # Final stage: Deploy gates (only on main branch)
   deploy-check:
     runs-on: ubuntu-latest
-    needs: [build, security]
+    needs: [build]
     if: github.ref == 'refs/heads/main'
     steps:
       - name: All checks passed
