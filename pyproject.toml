@@ -24,4 +24,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]  # Look for packages in the 'src' directory
+where = ["."]  # Look for packages in the 'src' directory
