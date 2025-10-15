@@ -1,0 +1,68 @@
+# .github/workflows/cd.yml
+
+name: Continuous Deployment
+
+on:
+  workflow_run:
+    workflows: ["Continuous Integration"] # Name of the CI workflow
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to AWS ECS
+    runs-on: ubuntu-latest
+    # Only run this job if the CI workflow was successful
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code from the triggering event
+        uses: actions/checkout@v4
+        with:
+          # This ensures we check out the exact code that the CI workflow ran against
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::707010175184:role/GitHubActions-App-Deploy-Role
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REPOSITORY: object-detector
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile.inference .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image_uri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Download, Render, and Deploy to ECS
+        run: |
+          aws ecs describe-task-definition --task-definition object-detector --query taskDefinition > task-def.json
+      
+      - uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: task-def-render
+        with:
+          task-definition: task-def.json
+          container-name: object-detector
+          image: ${{ steps.build-image.outputs.image_uri }}
+          
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def-render.outputs.task-definition }}
+          service: object-detector-service
+          cluster: object-detector-cluster
+          wait-for-service-stability: true

@@ -1,33 +1,43 @@
-version: '3.8'
+# docker-compose.yml
+version: '3.9'
 
 services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow-server
     ports:
-      - "5000:5000"
+      - "${MLFLOW_PORT}:${MLFLOW_PORT}"
     volumes:
       - mlflow_data:/mlflow
     environment:
       - BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db
       - ARTIFACT_ROOT=/mlflow/artifacts
-    command: mlflow server --host 0.0.0.0 --port 5000
+    command: mlflow server --host 0.0.0.0 --port ${MLFLOW_PORT}
     networks:
       - mlops_network
 
   api:
+    # Build the image and name it based on the .env file
     build:
       context: .
       dockerfile: docker/Dockerfile.inference
+    image: ${API_IMAGE_NAME}:dev
+    container_name: ${API_CONTAINER_NAME}
     ports:
-      - "8000:8000"
+      - "${API_PORT}:${API_PORT}"
     volumes:
-      - ./models:/app/models
+      # Mounts local models folder for quick testing without rebuilding
+      - ./src/models:/app/src/models
     environment:
       - CUDA_VISIBLE_DEVICES=0
+    # Healthcheck ensures the API is running before it's considered "healthy"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${API_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
-        limits:
-          memory: 2G
         reservations:
           devices:
             - driver: nvidia
@@ -37,28 +47,31 @@ services:
       - mlops_network
     depends_on:
       - mlflow
-prometheus:
+
+  prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus-server
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     networks:
       - mlops_network
 
-grafana:
-  image: grafana/grafana:latest
-  ports:
-    - "3000:3000"
-  environment:
-    - GF_SECURITY_ADMIN_PASSWORD=admin
-  volumes:
-    - grafana_data:/var/lib/grafana
-  networks:
-    - mlops_network
-  depends_on:
-    - prometheus
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-server
+    ports:
+      - "${GRAFANA_PORT}:${GRAFANA_PORT}"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - mlops_network
+    depends_on:
+      - prometheus
 
 networks:
   mlops_network:

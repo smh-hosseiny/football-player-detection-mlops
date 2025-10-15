@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
-from PyQt6.QtGui import QImage, QPixmap
 import sys
-import numpy as np
-from ultralytics import YOLO
+
 import cv2  # Only for video capture or your source
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+from ultralytics import YOLO
+
 
 class VideoDemo(QWidget):
     def __init__(self, model_path, video_path):
@@ -30,12 +31,16 @@ class VideoDemo(QWidget):
         # Convert to Qt image
         h, w, ch = frame_with_boxes.shape
         bytes_per_line = ch * w
-        qt_img = QImage(frame_with_boxes.data, w, h, bytes_per_line, QImage.Format.Format_BGR888)
+        qt_img = QImage(
+            frame_with_boxes.data, w, h, bytes_per_line, QImage.Format.Format_BGR888
+        )
         self.label.setPixmap(QPixmap.fromImage(qt_img))
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    demo = VideoDemo(model_path='./src/models/best.pt',
-                      video_path='./src/data/video.mp4')
+    demo = VideoDemo(
+        model_path="./src/models/best.pt", video_path="./src/data/video.mp4"
+    )
     demo.show()
     sys.exit(app.exec())

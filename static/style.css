@@ -1,0 +1,9 @@
+#canvas, #video {
+  border: 1px solid #333;
+  max-width: 95vw;
+}
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  padding: 2em;
+}

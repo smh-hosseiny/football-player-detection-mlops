@@ -1,0 +1,102 @@
+name: Manage Infrastructure
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'terraform/**' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'terraform/**' ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform:
+    name: Terraform Plan & Apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::707010175184:role/GitHubActions-Terraform-Role
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          # Pin Terraform version for consistency
+          terraform_version: 1.8.0
+
+      - name: Terraform init
+        id: init
+        run: terraform init
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        # Use -detailed-exitcode to get plan status in exit code
+        run: terraform plan -no-color -input=false -detailed-exitcode -out=tfplan
+        continue-on-error: true
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const getPlanStatus = (exitCode) => {
+              if (exitCode === 0) return '✅ No changes';
+              if (exitCode === 1) return '❌ Error';
+              if (exitCode === 2) return '📝 Changes detected';
+              return '❓ Unknown';
+            };
+
+            const planStatus = getPlanStatus(${{ steps.plan.exit_code }});
+            const planOutput = `${{ steps.plan.outputs.stdout || steps.plan.outputs.stderr }}`;
+            
+            const body = `
+            #### Terraform Plan: \`${planStatus}\`
+            *   **Init:** \`${{ steps.init.outcome }}\`
+            *   **Validate:** \`${{ steps.validate.outcome }}\`
+            *   **Plan Exit Code:** \`${{ steps.plan.exit_code }}\`
+
+            <details><summary>Show Plan Output</summary>
+
+            \`\`\`terraform
+            ${planOutput}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+      # If the plan fails (exit code 1), fail the workflow
+      - name: Fail workflow on plan error
+        if: steps.plan.exit_code == 1
+        run: exit 1
+
+      # Apply only on push to main AND if there are changes
+      - name: Terraform apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.plan.exit_code == 2
+        run: terraform apply -auto-approve tfplan

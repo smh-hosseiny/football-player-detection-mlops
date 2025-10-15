@@ -10,16 +10,20 @@ data:
   test_path: "./src/data/football_players_detection/test/"
 
 training:
-  batch_size: 16
-  epochs: 50
-  learning_rate: 0.001
-  early_stopping_patience: 10
+  batch_size: 32           
+  epochs: 100               
+  learning_rate: 0.0003    
+  lr_scheduler: cosine     
+  early_stopping_patience: 7   
+  freeze: [0,1,2]          # Freeze backbone stages; prevents overwriting pretrained features
+
 
 device: "cuda:1"  # or "cpu" for local testing
 
 output:
-  project_dir: "runs_detect"
-  model_dir: "./models"
+  project_dir: "../runs_detect"
+  model_dir: "../models"
+
 
 mlflow:
   tracking_uri: "http://localhost:5000"  # Local for dev

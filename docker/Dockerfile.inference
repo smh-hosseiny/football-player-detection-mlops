@@ -22,6 +22,8 @@ COPY api/ ./api/
 COPY src/ ./src/
 COPY configs/ ./configs/
 COPY scripts/ ./scripts/
+COPY static/ ./static/
+
 
 
 

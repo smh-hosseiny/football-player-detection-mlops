@@ -17,6 +17,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install correct torch + torchvision for CUDA 12.1 (matching base image)
+RUN pip install --no-cache-dir torch==2.2.0+cu121 torchvision==0.17.0+cu121 torchaudio==2.2.0+cu121 \
+    --index-url https://download.pytorch.org/whl/cu121
+
 # Copy only necessary source
 COPY src/training/ ./src/training/
 COPY src/test/ ./src/test/
