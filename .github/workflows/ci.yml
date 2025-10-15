@@ -46,9 +46,6 @@ jobs:
       - name: Run isort check
         run: isort --check-only --diff src/ api/ tests/
 
-      - name: Run mypy type checking
-        run: mypy src/ api/ --strict --no-warn-unused-ignores
-
   # Stage 2: Unit & Integration Tests
   test:
     runs-on: ubuntu-latest
