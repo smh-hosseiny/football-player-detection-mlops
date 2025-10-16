@@ -3,7 +3,7 @@ class PlayerDetectionApp {
     this.apiConfig = {
       image: window.API_ENDPOINTS?.image || '/api/predict',
       video: window.API_ENDPOINTS?.video || '/api/predict_video',
-      timeout: 30000 // 30 seconds
+      timeout: 300000 // 5 min
     };
     
     this.state = {
