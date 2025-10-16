@@ -1,22 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Football Player Detection</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Player Detection API</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <meta name="description" content="AI-powered football player detection">
 </head>
 <body>
-  <h1>Football Player Detection</h1>
-  <input type="file" id="mediaUpload" accept="image/*,video/*" />
-  <br /><br />
-  <video id="video" width="640" style="display:none;" controls></video>
-  <canvas id="canvas"></canvas>
+  <header role="banner">
+    <h1>Football Player Detection</h1>
+    <div id="status" class="status hidden" role="status" aria-live="polite"></div>
+  </header>
 
-  <button id="play">Play</button>
-  <button id="pause">Pause</button>
-  <button id="stop">Stop</button>
+  <main role="main">
+    <div class="upload-section">
+      <label for="mediaUpload" class="file-label">
+        <span class="file-label-text">Choose image or video file</span>
+        <input 
+          type="file" 
+          id="mediaUpload" 
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/avi"
+          aria-describedby="file-help"
+          required
+        >
+      </label>
+      <div id="file-help" class="help-text">
+        Supports: JPG, PNG, WebP, MP4, WebM, AVI (Max: 100MB)
+      </div>
+    </div>
 
+    <div class="media-container">
+      <video id="video" controls preload="metadata" style="display:none;" aria-label="Processed video"></video>
+      <canvas id="canvas" aria-label="Detection results" tabindex="0"></canvas>
+    </div>
 
-  <script src="/static/app.js"></script>
+    <div class="controls" role="group" aria-label="Playback controls">
+      <button id="play" disabled aria-label="Play video">▶ Play</button>
+      <button id="pause" disabled aria-label="Pause video">⏸ Pause</button>
+      <button id="stop" disabled aria-label="Stop video">⏹ Stop</button>
+      <button id="clear" aria-label="Clear results">🗑 Clear</button>
+    </div>
+
+    <div id="error-container" class="error-container hidden" role="alert"></div>
+  </main>
+
+  <script src="/static/app.js" defer></script>
 </body>
 </html>

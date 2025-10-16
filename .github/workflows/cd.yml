@@ -53,14 +53,14 @@ jobs:
         run: |
           aws ecs describe-task-definition --task-definition object-detector --query taskDefinition > task-def.json
       
-      - uses: aws-actions/amazon-ecs-render-task-definition@v1
+      - uses: aws-actions/amazon-ecs-render-task-definition@v2
         id: task-def-render
         with:
           task-definition: task-def.json
           container-name: object-detector
           image: ${{ steps.build-image.outputs.image_uri }}
           
-      - uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def-render.outputs.task-definition }}
           service: object-detector-service
