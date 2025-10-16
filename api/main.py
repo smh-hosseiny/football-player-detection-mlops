@@ -116,7 +116,7 @@ async def health_check():
     return {"status": "healthy", "device": detector.device}
 
 
-@app.post("/predict")
+@app.post("/api/predict")
 async def predict(file: UploadFile = File(...)):
     start_time = time.time()
     try:
@@ -132,7 +132,7 @@ async def predict(file: UploadFile = File(...)):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
-@app.post("/predict_video")
+@app.post("/api/predict_video")
 async def predict_video(file: UploadFile = File(...)):
     # Create unique temp file
     temp_filename = f"temp_{uuid.uuid4().hex}.mp4"
@@ -169,7 +169,7 @@ async def metrics():
     return generate_latest()
 
 
-@app.post("/batch_predict")
+@app.post("/api/batch_predict")
 async def batch_predict(files: List[UploadFile] = File(...)):
     """Batch prediction endpoint"""
     if len(files) > 10:

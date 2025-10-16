@@ -2,7 +2,7 @@ class PlayerDetectionApp {
   constructor() {
     this.apiConfig = {
       image: window.API_ENDPOINTS?.image || '/api/predict',
-      video: window.API_ENDPOINTS?.video || '/api/predict-video',
+      video: window.API_ENDPOINTS?.video || '/api/predict_video',
       timeout: 30000 // 30 seconds
     };
     
@@ -118,9 +118,10 @@ class PlayerDetectionApp {
     this.setupCanvas(img.width, img.height);
     this.ctx.drawImage(img, 0, 0);
 
-    const detections = await this.callDetectionAPI(file, this.apiConfig.image);
-    this.drawDetections(detections, img.width, img.height);
+    const response = await this.callDetectionAPI(file, this.apiConfig.image);
+    this.drawDetections(response.detections, img.width, img.height);
   }
+
 
   async processVideo(file) {
     const videoUrl = URL.createObjectURL(file);
@@ -225,32 +226,35 @@ class PlayerDetectionApp {
   }
 
   drawDetections(detections, originalWidth, originalHeight) {
-    const scaleX = this.canvas.clientWidth / originalWidth;
-    const scaleY = this.canvas.clientHeight / originalHeight;
+    // Use intrinsic canvas width/height, not client size
+    const scaleX = this.canvas.width / originalWidth;
+    const scaleY = this.canvas.height / originalHeight;
 
     this.ctx.save();
-    this.ctx.scale(scaleX, scaleY);
-    this.ctx.lineWidth = 2 / scaleX;
-    this.ctx.strokeStyle = '#ff0000';
-    this.ctx.fillStyle = '#ff0000';
-    this.ctx.font = `${16 / scaleX}px Arial`;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeStyle = 'red';
+    this.ctx.fillStyle = 'red';
+    this.ctx.font = `16px Arial`;
 
     detections.forEach(detection => {
-      const [x, y, w, h] = [
-        detection.bbox[0], detection.bbox[1],
-        detection.bbox[2] - detection.bbox[0],
-        detection.bbox[3] - detection.bbox[1]
-      ];
+      const [xmin, ymin, xmax, ymax] = detection.bbox;
+      const width = (xmax - xmin) * scaleX;
+      const height = (ymax - ymin) * scaleY;
+      const x = xmin * scaleX;
+      const y = ymin * scaleY;
 
-      this.ctx.strokeRect(x, y, w, h);
-      
+      this.ctx.strokeRect(x, y, width, height);
+
       const label = `${detection.class_name} (${(detection.confidence * 100).toFixed(1)}%)`;
+
+      // Adjust label position in intrinsic canvas coords
       const textY = y > 20 ? y - 5 : y + 15;
-      this.ctx.fillText(label, x, textY / scaleY);
+      this.ctx.fillText(label, x, textY);
     });
 
     this.ctx.restore();
   }
+
 
   createVideoController(detections, video) {
     const fps = detections.fps || 30;
@@ -262,17 +266,18 @@ class PlayerDetectionApp {
       if (!playing) return;
 
       const currentFrame = Math.floor(video.currentTime / frameDuration);
+      if (currentFrame >= detections.video_detections.length) {
+        pause();
+        return;
+      }
+
       const frameDetections = detections.video_detections[currentFrame] || [];
 
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.drawImage(video, 0, 0);
       this.drawDetections(frameDetections, video.videoWidth, video.videoHeight);
 
-      if (currentFrame < detections.video_detections.length) {
-        rafId = requestAnimationFrame(render);
-      } else {
-        this.pause();
-      }
+      rafId = requestAnimationFrame(render);
     };
 
     const play = () => {
@@ -299,6 +304,7 @@ class PlayerDetectionApp {
 
     return { play, pause, stop };
   }
+
 
   setProcessingState(processing) {
     this.isProcessing = processing;
