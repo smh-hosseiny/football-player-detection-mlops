@@ -1,5 +1,5 @@
-const apiImg = "http://localhost:8000/predict";
-const apiVid = "http://localhost:8000/predict_video";
+const apiImg = "https://api.playersdetect.com/predict";
+const apiVid = "https://api.playersdetect.com/predict_video";
 const upload = document.getElementById("mediaUpload");
 const canvas = document.getElementById("canvas");
 const video = document.getElementById("video");
