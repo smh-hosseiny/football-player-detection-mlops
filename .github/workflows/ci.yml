@@ -4,9 +4,15 @@ name: Continuous Integration
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.github/workflows/**'
+      - 'terraform/**'
+
   pull_request:
     branches: [main]
-
+    
 env:
   PYTHON_VERSION: '3.9'
   COVERAGE_THRESHOLD: 80
