@@ -195,7 +195,7 @@ jobs:
           python -m pip install --user .
           python -c "
           try:
-              import your_package_name  # Replace with actual package name
+              import api  
               print('✅ Package installs and imports correctly')
           except ImportError as e:
               print(f'❌ Package installation failed: {e}')
