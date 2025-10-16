@@ -9,7 +9,7 @@
 
 <!-- Teaser Prediction Video -->
 <p align="center">
-  <video src="https://github.com/smh-hosseiny/football-player-detection-mlops/raw/refs/heads/main/assets/pred.mp4" controls width="75%">
+  <video src="https://github.com/user-attachments/assets/b33a4232-2851-43f5-8084-97237d77bed4" controls width="75%">
     Your browser does not support the video tag.
   </video>
 </p>
