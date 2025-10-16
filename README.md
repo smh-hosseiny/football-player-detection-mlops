@@ -20,4 +20,4 @@ This repository contains a full-stack, production-ready MLOps pipeline for detec
 
 The system uses a **YOLOv11** model for high-performance object detection, which is served via a scalable **FastAPI** backend. The entire cloud infrastructure is defined as code using **Terraform** and deployed on **AWS**. A complete **CI/CD pipeline** with **GitHub Actions** automates the build, test, and deployment process to a containerized environment on **Amazon ECS**, ensuring robust and repeatable deployments.
 
-The live application can be accessed at: **[https://playerdetect.com](https://playersdetect.com)**
+The live application can be accessed at: **[https://api.playersdetect.com](https://api.playersdetect.com)**
