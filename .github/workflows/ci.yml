@@ -73,15 +73,10 @@ jobs:
           pip install -r requirements-dev.txt
           pip install -e .
 
-      - name: Run tests with coverage
+      - name: Run tests
         run: |
           pytest tests/ 
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: true
 
   # Stage 3: Model & API Integration Tests
   model-test:
