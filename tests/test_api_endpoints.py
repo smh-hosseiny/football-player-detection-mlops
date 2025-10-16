@@ -36,7 +36,7 @@ def test_predict_endpoint():
     """
     with open("assets/sample.jpg", "rb") as f:
         mock_file = ("sample.jpg", f, "image/jpeg")
-        response = client.post("/predict", files={"file": mock_file})
+        response = client.post("/api/predict", files={"file": mock_file})
 
     # 1. Assert that the request was successful
     assert response.status_code == 200
@@ -61,7 +61,7 @@ def test_predict_endpoint_no_file():
     Tests that the API correctly handles requests with no file sent.
     It should return a 422 Unprocessable Entity error.
     """
-    response = client.post("/predict")  # Corrected from "/predict/image"
+    response = client.post("/api/predict")  # Corrected from "/predict/image"
     assert response.status_code == 422
 
 
