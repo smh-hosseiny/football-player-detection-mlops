@@ -96,7 +96,8 @@ class PlayerDetectionApp {
 
   async processFile(file) {
     this.setProcessingState(true);
-    this.showStatus('Processing file...', 'loading');
+    this.showLoading();
+    this.showStatus('Processing file...', 'loading', false);
 
     try {
       if (file.type.startsWith('image/')) {
@@ -104,14 +105,17 @@ class PlayerDetectionApp {
       } else if (file.type.startsWith('video/')) {
         await this.processVideo(file);
       }
-      this.showStatus('Processing complete!', 'success');
+      this.showStatus('Processing complete!', 'success', true);
     } catch (error) {
       console.error('Processing error:', error);
       this.showError(`Processing failed: ${error.message}`);
     } finally {
+      this.hideLoading();
       this.setProcessingState(false);
     }
   }
+
+
 
   async processImage(file) {
     const img = await this.loadImage(file);
@@ -130,12 +134,13 @@ class PlayerDetectionApp {
     this.video.src = videoUrl;
     await this.waitForVideoMetadata();
 
-    const detections = await this.callDetectionAPI(file, this.apiConfig.video);
     this.setupCanvas(this.video.videoWidth, this.video.videoHeight);
-    
+
+    const detections = await this.callDetectionAPI(file, this.apiConfig.video);
     this.videoController = this.createVideoController(detections, this.video);
     this.enableControls();
   }
+
 
   loadImage(file) {
     return new Promise((resolve, reject) => {
@@ -200,6 +205,7 @@ class PlayerDetectionApp {
       throw error;
     }
   }
+
 
   validateApiResponse(data, isVideo) {
     if (isVideo) {
@@ -320,18 +326,39 @@ class PlayerDetectionApp {
     buttons.forEach(btn => btn.disabled = !enable);
   }
 
-  showStatus(message, type = 'info') {
+  showStatus(message, type = 'info', autoHide = false) {
     this.statusEl.textContent = message;
     this.statusEl.className = `status ${type}`;
     this.statusEl.classList.remove('hidden');
-    setTimeout(() => this.statusEl.classList.add('hidden'), 5000);
+
+    // Only hide automatically if autoHide=true
+    if (autoHide) {
+      setTimeout(() => this.statusEl.classList.add('hidden'), 5000);
+    }
   }
+
 
   showError(message) {
     this.errorEl.textContent = message;
     this.errorEl.classList.remove('hidden');
     setTimeout(() => this.errorEl.classList.add('hidden'), 10000);
   }
+
+  showLoading() {
+    document.getElementById('loading-overlay').style.display = 'flex';
+
+    // Optionally dim main UI container
+    document.querySelector('body').style.pointerEvents = 'none';  // disable clicks
+    document.querySelector('body').style.opacity = '0.6';          // dim UI
+  }
+
+  hideLoading() {
+    document.getElementById('loading-overlay').style.display = 'none';
+
+    document.querySelector('body').style.pointerEvents = 'auto';   // re-enable clicks
+    document.querySelector('body').style.opacity = '1';            // restore UI
+  }
+
 
   clearAll() {
     URL.revokeObjectURL(this.state.mediaUrl);

@@ -31,10 +31,36 @@
       </div>
     </div>
 
+
+    <div id="loading-overlay" style="
+      display: none;
+      position: fixed; 
+      top: 0; left: 0; right: 0; bottom: 0; 
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center; 
+      align-items: center;">
+      <div class="spinner" style="
+        border: 8px solid #f3f3f3; 
+        border-top: 8px solid #00e676; 
+        border-radius: 50%; 
+        width: 60px; height: 60px; 
+        animation: spin 1s linear infinite;">
+      </div>
+    </div>
+
+    <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    </style>
+
+
     <div class="media-container">
       <video id="video" controls preload="metadata" style="display:none;" aria-label="Processed video"></video>
       <canvas id="canvas" aria-label="Detection results" tabindex="0"></canvas>
     </div>
+    
 
     <div class="controls" role="group" aria-label="Playback controls">
       <button id="play" disabled aria-label="Play video">▶ Play</button>
