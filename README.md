@@ -60,7 +60,7 @@ This phase focuses on training the model and testing the application locally.
 
 Place your custom football player dataset in `src/data/football_players_detection/`. Ensure the `data.yaml` file points to the correct `train`, `validation`, and `test` directories, as specified in `configs/training_config.yaml`.
 
-Download the [football-players-detection dataset](https://github.com/katsuhirohonda/repo-summarizer) using:
+Download the [football-players-detection dataset](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc) using:
    ```bash
    bash scripts/download_training.sh
    ```
@@ -109,7 +109,6 @@ The Terraform configuration automates the provisioning of AWS resources for a sc
 - **Compute**: The `aws_ecs_task_definition` uses 1024 CPU and 1536 MB memory, optimized for the YOLOv11 model on CPU. The `aws_launch_template` uses `t3a.small` instances (AMD-based, cost-effective).
 - **Spot Instances**: The Auto Scaling Group (`aws_autoscaling_group`) is configured to support EC2 Spot Instances, which can save up to 90% on compute costs. Add a `spot_options` block to the `aws_launch_template` for further savings.
 - **Networking**: Private subnets are used for ECS tasks, and public subnets for the Application Load Balancer (ALB), ensuring security without additional costs.
-- **Logging**: The `aws_cloudwatch_log_group` has a 7-day retention policy to minimize storage costs.
 
 ### Steps to Deploy Infrastructure
 
@@ -118,7 +117,7 @@ The Terraform configuration automates the provisioning of AWS resources for a sc
    aws configure
    ```
 
-2. **Setup Terraform Backend**: The `backend.tf` file uses an S3 bucket for state management. Create the S3 bucket (`object-detector-tfstate-707010175184-us-east-1`) and a DynamoDB table (`terraform-state-locks`) for state locking.
+2. **Setup Terraform Backend**: The `backend.tf` file uses an S3 bucket for state management. Create the S3 bucket (`object-detector-tfstate-<AWS_ACCOUNT_ID>-us-east-1`) and a DynamoDB table (`terraform-state-locks`) for state locking.
 
 3. **Initialize Terraform**:
    ```bash
@@ -156,14 +155,10 @@ The CI/CD pipeline automates testing, building, and deployment on every push to 
    - Attach permissions, such as:
      - `AmazonEC2ContainerRegistryPowerUser` (for ECR).
      - `AmazonECSFullAccess` or a custom ECS deploy policy.
+   - Update the trust policy to allow your GitHub repository (using repo:<OWNER>/<REPO>:ref:refs/heads/main) to assume this role
+   - The workflow will authenticate using the IAM role via the aws-actions/configure-aws-credentials action with role-to-assume.
 
-3. **Add GitHub Secrets**:
-   - In your GitHub repository settings, go to **Settings > Secrets and variables > Actions > Secrets**, and add:
-     - `AWS_ROLE_TO_ASSUME`: The ARN of the IAM role created for GitHub OIDC.
-     - `AWS_REGION`: Your AWS region (e.g., `us-east-1`).
-     - `ECR_REPOSITORY`: The ECR repository name (e.g., `object-detector`).
-
-4. **Automatic CI/CD**: Every push to the `main` branch will now automatically:
+3. **Automatic CI/CD**: Every push to the `main` branch will now automatically:
    - Run tests and linting.
    - Build and push the Docker image to ECR.
    - Deploy to ECS using the assumed IAM role.
