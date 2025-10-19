@@ -70,7 +70,7 @@ resource "aws_autoscaling_group" "ecs" {
   name                = "${var.app_name}-asg"
   vpc_zone_identifier = var.private_subnet_ids
   min_size            = 1
-  max_size            = 4
+  max_size            = 1
   desired_capacity    = 1
   health_check_type   = "ELB"
   health_check_grace_period = 300
