@@ -27,11 +27,12 @@ variable "vpc_id" {
 variable "private_subnet_ids" {
   type        = list(string)
   description = "A list of private subnet IDs for the ECS instances and tasks."
-  default     = ["subnet-0067b77c2592e3d84", "subnet-0d1598a5445333793", "subnet-002944b664578d535"]
+  # We are moving to a public subnet, so this will no longer be used.
+  default     = []
 }
 
 variable "public_subnet_ids" {
   type        = list(string)
-  description = "A list of public subnet IDs for the Application Load Balancer."
-  default     = ["subnet-0d5eaa544e51c34c0", "subnet-0caa0559ba4705d81"]  
+  description = "A list of public subnet IDs for the resources."
+  default     = ["subnet-0d5eaa544e51c34c0"]  
 }

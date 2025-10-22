@@ -45,7 +45,7 @@ resource "aws_launch_template" "ecs" {
   }
 
   network_interfaces {
-    associate_public_ip_address = false
+    associate_public_ip_address = true
     security_groups            = [aws_security_group.ecs_tasks.id]
   }
 
@@ -68,14 +68,14 @@ resource "aws_launch_template" "ecs" {
 
 resource "aws_autoscaling_group" "ecs" {
   name                = "${var.app_name}-asg"
-  vpc_zone_identifier = var.private_subnet_ids
+  vpc_zone_identifier = var.public_subnet_ids
   min_size            = 1
-  max_size            = 4
+  max_size            = 1
   desired_capacity    = 1
   health_check_type   = "ELB"
   health_check_grace_period = 300
 
-  protect_from_scale_in = true
+  protect_from_scale_in = false
 
   launch_template {
     id      = aws_launch_template.ecs.id
@@ -243,8 +243,7 @@ resource "aws_ecs_task_definition" "app" {
     }
 
     environment = [
-      { name = "ENVIRONMENT", value = var.environment },
-      { name = "CUDA_VISIBLE_DEVICES", value = "0" } # Use GPU 0 if available
+      { name = "ENVIRONMENT", value = var.environment }
     ]
 
     # Remove this for CPU-only instances
@@ -283,15 +282,17 @@ resource "aws_ecs_service" "app" {
 
   network_configuration {
     security_groups  = [aws_security_group.ecs_tasks.id]
-    subnets          = var.private_subnet_ids
-    assign_public_ip = false
+    subnets          = var.public_subnet_ids
+    assign_public_ip = true
   }
 
+  
   load_balancer {
     target_group_arn = aws_lb_target_group.app.arn
     container_name   = var.app_name
     container_port   = 8000
   }
+    
 
   deployment_controller {
     type = "ECS"
@@ -310,38 +311,25 @@ resource "aws_ecs_service" "app" {
   depends_on = [aws_lb_listener.https, aws_lb_listener.http]
 }
 
-
-resource "aws_subnet" "private_a" {
-  vpc_id            = var.vpc_id 
-  cidr_block        = "10.0.101.0/24"
-  availability_zone = "us-east-1a"
-
-  tags = {
-    Name = "my-app-private-us-east-1a"
-  }
-}
-
-resource "aws_subnet" "private_b" {
-  vpc_id            = var.vpc_id 
-  cidr_block        = "10.0.102.0/24"
-  availability_zone = "us-east-1b"
-
-  tags = {
-    Name = "my-app-private-us-east-1b"
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
+# resource "aws_subnet" "private_a" {
+#   vpc_id            = var.vpc_id 
+#   cidr_block        = "10.0.101.0/24"
+#   availability_zone = "us-east-1a"
+# 
+#   tags = {
+#     Name = "my-app-private-us-east-1a"
+#   }
+# }
+# 
+# resource "aws_subnet" "private_b" {
+#   vpc_id            = var.vpc_id 
+#   cidr_block        = "10.0.102.0/24"
+#   availability_zone = "us-east-1b"
+# 
+#   tags = {
+#     Name = "my-app-private-us-east-1b"
+#   }
+# }
 
 
 
