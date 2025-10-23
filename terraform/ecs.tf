@@ -109,13 +109,33 @@ resource "aws_autoscaling_group" "ecs" {
 }
 
 
+
+resource "aws_autoscaling_schedule" "scale_down_night" {
+  autoscaling_group_name  = aws_autoscaling_group.ecs.name
+  scheduled_action_name   = "scale-down-night"
+  recurrence              = "0 23 * * *"  # 11 PM UTC (7 PM EDT)
+  min_size                = 0
+  max_size                = 0
+  desired_capacity        = 0
+}
+
+resource "aws_autoscaling_schedule" "scale_up_day" {
+  autoscaling_group_name  = aws_autoscaling_group.ecs.name
+  scheduled_action_name   = "scale-up-day"
+  recurrence              = "0 11 * * *"  # 11 AM UTC (7 AM EDT)
+  min_size                = 1
+  max_size                = 1
+  desired_capacity        = 1
+}
+
+
 # ECS Capacity Provider (attach to ASG)
 resource "aws_ecs_capacity_provider" "main" {
   name = "${var.app_name}-capacity-provider"
 
   auto_scaling_group_provider {
     auto_scaling_group_arn         = aws_autoscaling_group.ecs.arn
-    managed_termination_protection = "ENABLED"
+    managed_termination_protection = "DISABLED"
 
     managed_scaling {
       status                    = "ENABLED"
@@ -283,7 +303,6 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     security_groups  = [aws_security_group.ecs_tasks.id]
     subnets          = var.public_subnet_ids
-    assign_public_ip = true
   }
 
   
@@ -298,6 +317,8 @@ resource "aws_ecs_service" "app" {
     type = "ECS"
   }
 
+  force_new_deployment = true
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -310,29 +331,6 @@ resource "aws_ecs_service" "app" {
 
   depends_on = [aws_lb_listener.https, aws_lb_listener.http]
 }
-
-# resource "aws_subnet" "private_a" {
-#   vpc_id            = var.vpc_id 
-#   cidr_block        = "10.0.101.0/24"
-#   availability_zone = "us-east-1a"
-# 
-#   tags = {
-#     Name = "my-app-private-us-east-1a"
-#   }
-# }
-# 
-# resource "aws_subnet" "private_b" {
-#   vpc_id            = var.vpc_id 
-#   cidr_block        = "10.0.102.0/24"
-#   availability_zone = "us-east-1b"
-# 
-#   tags = {
-#     Name = "my-app-private-us-east-1b"
-#   }
-# }
-
-
-
 
 
 # Route 53 Hosted Zone

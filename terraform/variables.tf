@@ -3,7 +3,7 @@
 variable "app_name" {
   type        = string
   description = "The name of the application, used to prefix resource names."
-  default     = "object-detector"
+  default     = "object-detector-new"
 }
 
 variable "environment" {
@@ -34,5 +34,5 @@ variable "private_subnet_ids" {
 variable "public_subnet_ids" {
   type        = list(string)
   description = "A list of public subnet IDs for the resources."
-  default     = ["subnet-0d5eaa544e51c34c0"]  
+  default     = ["subnet-0d1a6f5d4f680cc95", "subnet-0eb0dee23d6db07a7"]  
 }
