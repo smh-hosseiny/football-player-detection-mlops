@@ -41,7 +41,7 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
-          ECR_REPOSITORY: object-detector
+          ECR_REPOSITORY: object-detector-new
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
         run: |
@@ -51,18 +51,18 @@ jobs:
 
       - name: Download, Render, and Deploy to ECS
         run: |
-          aws ecs describe-task-definition --task-definition object-detector --query taskDefinition > task-def.json
+          aws ecs describe-task-definition --task-definition object-detector-new --query taskDefinition > task-def.json
       
       - uses: aws-actions/amazon-ecs-render-task-definition@v1
         id: task-def-render
         with:
           task-definition: task-def.json
-          container-name: object-detector
+          container-name: object-detector-new
           image: ${{ steps.build-image.outputs.image_uri }}
           
       - uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def-render.outputs.task-definition }}
-          service: object-detector-service
-          cluster: object-detector-cluster
+          service: object-detector-new-service
+          cluster: object-detector-new-cluster
           wait-for-service-stability: true
