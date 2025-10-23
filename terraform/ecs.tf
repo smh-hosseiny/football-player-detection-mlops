@@ -272,7 +272,7 @@ resource "aws_ecs_service" "app" {
   name            = "${var.app_name}-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1  # Start with 1, scale-to-zero handles off-hours
+  desired_count   = 0
 
   capacity_provider_strategy {
     capacity_provider = aws_ecs_capacity_provider.main.name
