@@ -109,11 +109,10 @@ resource "aws_autoscaling_group" "ecs" {
 }
 
 
-
 resource "aws_autoscaling_schedule" "scale_down_night" {
   autoscaling_group_name  = aws_autoscaling_group.ecs.name
   scheduled_action_name   = "scale-down-night"
-  recurrence              = "0 23 * * *"  # 11 PM UTC (7 PM EDT)
+  recurrence              = "0 3 * * *"  # 11 PM Toronto time (03:00 UTC)
   min_size                = 0
   max_size                = 0
   desired_capacity        = 0
@@ -122,7 +121,7 @@ resource "aws_autoscaling_schedule" "scale_down_night" {
 resource "aws_autoscaling_schedule" "scale_up_day" {
   autoscaling_group_name  = aws_autoscaling_group.ecs.name
   scheduled_action_name   = "scale-up-day"
-  recurrence              = "0 11 * * *"  # 11 AM UTC (7 AM EDT)
+  recurrence              = "0 12 * * *"  # 8 AM Toronto time (12:00 UTC)
   min_size                = 1
   max_size                = 1
   desired_capacity        = 1
