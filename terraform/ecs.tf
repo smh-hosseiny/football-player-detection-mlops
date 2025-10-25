@@ -30,7 +30,7 @@ data "aws_ami" "ecs_optimized" {
 resource "aws_launch_template" "ecs" {
   name_prefix   = "${var.app_name}-ecs-"
   image_id      = data.aws_ami.ecs_optimized.id
-  instance_type = "t3a.small"  # CPU-only instance
+  instance_type = "t3a.medium"  # CPU-only instance
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance.name
@@ -220,8 +220,8 @@ resource "aws_ecs_task_definition" "app" {
   family                   = var.app_name
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
-  cpu                      = "1024"   # 1 vCPU 
-  memory                   = "1536"   # (enough for YOLO11n <3GB)
+  cpu                      = "2048"   # 1 vCPU 
+  memory                   = "4096"   # (enough for YOLO11n <3GB)
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
