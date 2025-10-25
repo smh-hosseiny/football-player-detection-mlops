@@ -22,7 +22,7 @@ data "aws_ami" "ecs_optimized" {
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["amzn2-ami-ecs-hvm-*"]  # <-- removed "-gpu"
+    values = ["amzn2-ami-ecs-hvm-*"]  
   }
 }
 
@@ -70,10 +70,10 @@ resource "aws_autoscaling_group" "ecs" {
   name                = "${var.app_name}-asg"
   vpc_zone_identifier = var.public_subnet_ids
   min_size            = 1
-  max_size            = 1
+  max_size            = 2
   desired_capacity    = 1
   health_check_type   = "ELB"
-  health_check_grace_period = 300
+  health_check_grace_period = 900
 
   protect_from_scale_in = false
 
@@ -109,32 +109,13 @@ resource "aws_autoscaling_group" "ecs" {
 }
 
 
-resource "aws_autoscaling_schedule" "scale_down_night" {
-  autoscaling_group_name  = aws_autoscaling_group.ecs.name
-  scheduled_action_name   = "scale-down-night"
-  recurrence              = "0 3 * * *"  # 11 PM Toronto time (03:00 UTC)
-  min_size                = 0
-  max_size                = 0
-  desired_capacity        = 0
-}
-
-resource "aws_autoscaling_schedule" "scale_up_day" {
-  autoscaling_group_name  = aws_autoscaling_group.ecs.name
-  scheduled_action_name   = "scale-up-day"
-  recurrence              = "0 12 * * *"  # 8 AM Toronto time (12:00 UTC)
-  min_size                = 1
-  max_size                = 1
-  desired_capacity        = 1
-}
-
-
 # ECS Capacity Provider (attach to ASG)
 resource "aws_ecs_capacity_provider" "main" {
   name = "${var.app_name}-capacity-provider"
 
   auto_scaling_group_provider {
     auto_scaling_group_arn         = aws_autoscaling_group.ecs.arn
-    managed_termination_protection = "DISABLED"
+    managed_termination_protection = "ENABLED"
 
     managed_scaling {
       status                    = "ENABLED"
@@ -264,14 +245,6 @@ resource "aws_ecs_task_definition" "app" {
     environment = [
       { name = "ENVIRONMENT", value = var.environment }
     ]
-
-    # Remove this for CPU-only instances
-    # resourceRequirements = [
-    #   {
-    #     type  = "GPU"
-    #     value = "1"
-    #   }
-    # ]
 
     # Minimal privileges (remove SYS_ADMIN unless required)
     linuxParameters = {
