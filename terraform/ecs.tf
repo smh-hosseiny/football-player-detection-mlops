@@ -51,9 +51,11 @@ resource "aws_launch_template" "ecs" {
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    echo ECS_CLUSTER=${aws_ecs_cluster.main.name} >> /etc/ecs/ecs.config
-    EOF
+    echo "ECS_CLUSTER=${aws_ecs_cluster.main.name}" >> /etc/ecs/ecs.config
+    systemctl restart ecs
+  EOF
   )
+
 
   tag_specifications {
     resource_type = "instance"
