@@ -1,5 +1,11 @@
 # terraform/variables.tf
 
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"   # change if you use another region
+}
+
 variable "app_name" {
   type        = string
   description = "The name of the application, used to prefix resource names."

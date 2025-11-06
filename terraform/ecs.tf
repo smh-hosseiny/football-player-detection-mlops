@@ -14,27 +14,45 @@ resource "aws_ecs_cluster" "main" {
 }
 
 
-
-
-# Data Source for ECS-Optimized CPU AMI
-data "aws_ami" "ecs_optimized" {
-  most_recent = true
-  owners      = ["amazon"]
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-ecs-hvm-*"]  
-  }
+data "aws_ssm_parameter" "ecs_ami" {
+  name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
 }
 
 # Launch Template (CPU-only, Spot-ready)
 resource "aws_launch_template" "ecs" {
   name_prefix   = "${var.app_name}-ecs-"
-  image_id      = data.aws_ami.ecs_optimized.id
-  instance_type = "t3a.medium"  # CPU-only instance
+  image_id      = data.aws_ssm_parameter.ecs_ami.value
+  instance_type = "t3a.small"  # CPU-only instance
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance.name
   }
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups            = [aws_security_group.ecs_instances.id] 
+    delete_on_termination      = true
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    # Force ECS cluster via metadata
+    mkdir -p /etc/ecs
+    echo "ECS_CLUSTER=${aws_ecs_cluster.main.name}" > /etc/ecs/ecs.config
+    echo "ECS_ENABLE_TASK_IAM_ROLE=true" >> /etc/ecs/ecs.config
+    echo "ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true" >> /etc/ecs/ecs.config
+    echo "ECS_ENABLE_CONTAINER_METADATA=true" >> /etc/ecs/ecs.config
+
+    # Start agent
+    systemctl enable --now ecs
+  EOF
+  )
 
   block_device_mappings {
     device_name = "/dev/xvda"
@@ -43,18 +61,6 @@ resource "aws_launch_template" "ecs" {
       volume_type = "gp3"
     }
   }
-
-  network_interfaces {
-    associate_public_ip_address = true
-    security_groups            = [aws_security_group.ecs_tasks.id]
-  }
-
-  user_data = base64encode(<<-EOF
-    #!/bin/bash
-    echo "ECS_CLUSTER=${aws_ecs_cluster.main.name}" >> /etc/ecs/ecs.config
-    systemctl restart ecs
-  EOF
-  )
 
 
   tag_specifications {
@@ -74,17 +80,32 @@ resource "aws_autoscaling_group" "ecs" {
   min_size            = 1
   max_size            = 2
   desired_capacity    = 1
-  health_check_type   = "ELB"
-  health_check_grace_period = 900
+  health_check_type   = "EC2"
+  health_check_grace_period = 300
 
   protect_from_scale_in = false
+  wait_for_capacity_timeout = "20m"
 
   launch_template {
     id      = aws_launch_template.ecs.id
     version = "$Latest"
   }
 
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 0
+    }
+    #triggers = ["launch_template"]
+  }
+
   # Tag instances
+  tag {
+    key                 = "cluster"
+    value               = aws_ecs_cluster.main.name
+    propagate_at_launch = true
+  }
+
   tag {
     key                 = "AmazonECSManaged"
     value               = "true"
@@ -103,6 +124,7 @@ resource "aws_autoscaling_group" "ecs" {
     propagate_at_launch = true
   }
 
+
   # Add the launch template to the depends_on list
   depends_on = [
     aws_iam_instance_profile.ecs_instance,
@@ -117,7 +139,7 @@ resource "aws_ecs_capacity_provider" "main" {
 
   auto_scaling_group_provider {
     auto_scaling_group_arn         = aws_autoscaling_group.ecs.arn
-    managed_termination_protection = "ENABLED"
+    managed_termination_protection = "DISABLED"
 
     managed_scaling {
       status                    = "ENABLED"
@@ -164,6 +186,18 @@ resource "aws_iam_role_policy_attachment" "ecs_instance" {
   role       = aws_iam_role.ecs_instance.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 }
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_cloudwatch" {
+  role       = aws_iam_role.ecs_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# Add this to your ecs.tf
+resource "aws_iam_role_policy_attachment" "ecs_instance_ssm" {
+  role       = aws_iam_role.ecs_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 
 resource "aws_iam_instance_profile" "ecs_instance" {
   name = "${var.app_name}-ecs-instance-profile"
@@ -220,10 +254,10 @@ resource "aws_cloudwatch_log_group" "ecs" {
 # ECS Task Definition (optimized for YOLO11n)
 resource "aws_ecs_task_definition" "app" {
   family                   = var.app_name
-  network_mode             = "awsvpc"
+  network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
-  cpu                      = "2048"   # 1 vCPU 
-  memory                   = "4096"   # (enough for YOLO11n <3GB)
+  cpu                      = "1500"  
+  memory                   = "1500"   
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
@@ -266,7 +300,7 @@ resource "aws_ecs_service" "app" {
   name            = "${var.app_name}-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1  #scale down
+  desired_count   = 1
 
   capacity_provider_strategy {
     capacity_provider = aws_ecs_capacity_provider.main.name
@@ -274,21 +308,10 @@ resource "aws_ecs_service" "app" {
     base              = 1  # Ensure at least 1 task runs
   }
 
-  network_configuration {
-    security_groups  = [aws_security_group.ecs_tasks.id]
-    subnets          = var.public_subnet_ids
-  }
-
-  
   load_balancer {
     target_group_arn = aws_lb_target_group.app.arn
     container_name   = var.app_name
     container_port   = 8000
-  }
-    
-
-  deployment_controller {
-    type = "ECS"
   }
 
   force_new_deployment = true
@@ -337,10 +360,6 @@ resource "aws_acm_certificate" "app" {
   provider = aws.us-east-1
   domain_name       = "api.playersdetect.com"
   validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
 
   tags = {
     Name        = "playersdetect-api-cert"
