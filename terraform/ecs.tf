@@ -143,7 +143,7 @@ resource "aws_ecs_capacity_provider" "main" {
 
     managed_scaling {
       status                    = "ENABLED"
-      target_capacity           = 75    # Keep ASG ~75% utilized for cost efficiency
+      target_capacity           = 90   
       minimum_scaling_step_size = 1
       maximum_scaling_step_size = 1
     }
