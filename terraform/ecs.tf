@@ -50,7 +50,7 @@ resource "aws_launch_template" "ecs" {
     echo "ECS_ENABLE_CONTAINER_METADATA=true" >> /etc/ecs/ecs.config
 
     # Start agent
-    systemctl enable --now ecs
+    systemctl enable ecs
   EOF
   )
 
