@@ -77,8 +77,8 @@ resource "aws_launch_template" "ecs" {
 resource "aws_autoscaling_group" "ecs" {
   name                = "${var.app_name}-asg"
   vpc_zone_identifier = var.public_subnet_ids
-  min_size            = 1
-  max_size            = 2
+  min_size            = 0
+  max_size            = 1
   desired_capacity    = 1
   health_check_type   = "EC2"
   health_check_grace_period = 300
@@ -143,7 +143,7 @@ resource "aws_ecs_capacity_provider" "main" {
 
     managed_scaling {
       status                    = "ENABLED"
-      target_capacity           = 90   
+      target_capacity           = 91
       minimum_scaling_step_size = 1
       maximum_scaling_step_size = 1
     }
@@ -301,6 +301,9 @@ resource "aws_ecs_service" "app" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = 1
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 
   capacity_provider_strategy {
     capacity_provider = aws_ecs_capacity_provider.main.name
@@ -439,5 +442,93 @@ resource "aws_lb_listener" "http" {
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
+  }
+}
+
+
+# --- SCHEDULER IAM ROLE ---
+# Allows the scheduler to update your ECS Service
+resource "aws_iam_role" "scheduler" {
+  name = "${var.app_name}-scheduler-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "scheduler.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "scheduler_ecs" {
+  name = "${var.app_name}-scheduler-policy"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "ecs:UpdateService"
+        Resource = aws_ecs_service.app.id # Specific to your service
+      }
+    ]
+  })
+}
+
+# --- STOP SCHEDULE (10 PM Toronto Time) ---
+resource "aws_scheduler_schedule" "stop_ecs" {
+  name       = "${var.app_name}-stop-nightly"
+  group_name = "default"
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  # Cron: Minute 0, Hour 22 (10 PM), Every Day
+  schedule_expression = "cron(0 22 * * ? *)"
+  
+  # NATIVE TIMEZONE SUPPORT! No UTC math needed.
+  schedule_expression_timezone = "America/Toronto"
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ecs:updateService"
+    role_arn = aws_iam_role.scheduler.arn
+
+    input = jsonencode({
+      Cluster      = aws_ecs_cluster.main.name
+      Service      = aws_ecs_service.app.name
+      DesiredCount = 0 # Scale down to 0
+    })
+  }
+}
+
+# --- START SCHEDULE (10 AM Toronto Time) ---
+resource "aws_scheduler_schedule" "start_ecs" {
+  name       = "${var.app_name}-start-morning"
+  group_name = "default"
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  # Cron: Minute 0, Hour 10 (10 AM), Every Day
+  schedule_expression = "cron(0 10 * * ? *)"
+  schedule_expression_timezone = "America/Toronto"
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ecs:updateService"
+    role_arn = aws_iam_role.scheduler.arn
+
+    input = jsonencode({
+      Cluster      = aws_ecs_cluster.main.name
+      Service      = aws_ecs_service.app.name
+      DesiredCount = 1 # Wake up!
+    })
   }
 }
