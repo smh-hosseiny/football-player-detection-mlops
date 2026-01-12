@@ -11,9 +11,7 @@
 
 <!-- Teaser Prediction Video -->
 <p align="center">
-  <img src="assets/pred.gif" controls width="75%">
-    Your browser does not support the video tag.
-  </img>
+  <img src="assets/pred.gif" width="75%" />
 </p>
 
 ---
