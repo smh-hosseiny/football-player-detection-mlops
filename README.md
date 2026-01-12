@@ -11,9 +11,9 @@
 
 <!-- Teaser Prediction Video -->
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/b33a4232-2851-43f5-8084-97237d77bed4" controls width="75%">
+  <img src="assets/pred.gif" controls width="75%">
     Your browser does not support the video tag.
-  </video>
+  </img>
 </p>
 
 ---

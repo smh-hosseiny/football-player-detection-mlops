@@ -481,7 +481,7 @@ resource "aws_iam_role_policy" "scheduler_ecs" {
   })
 }
 
-# --- STOP SCHEDULE (10 PM Toronto Time) ---
+# --- STOP SCHEDULE (5 PM Toronto Time) ---
 resource "aws_scheduler_schedule" "stop_ecs" {
   name       = "${var.app_name}-stop-nightly"
   group_name = "default"
@@ -490,8 +490,8 @@ resource "aws_scheduler_schedule" "stop_ecs" {
     mode = "OFF"
   }
 
-  # Cron: Minute 0, Hour 22 (10 PM), Every Day
-  schedule_expression = "cron(0 22 * * ? *)"
+  # Cron: Minute 0, Hour 17 (5 PM), Every Day
+  schedule_expression = "cron(0 17 * * ? *)"
   
   # NATIVE TIMEZONE SUPPORT! No UTC math needed.
   schedule_expression_timezone = "America/Toronto"
