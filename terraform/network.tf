@@ -94,35 +94,6 @@ resource "aws_security_group" "ecs_instances" {
 }
 
 
-# --- VPC ENDPOINT INFRASTRUCTURE ---
-
-# A new Security Group for all your VPC Endpoints
-resource "aws_security_group" "vpc_endpoints" {
-  name        = "${var.app_name}-vpc-endpoints-sg"
-  description = "Allow instances to access VPC endpoints"
-  vpc_id      = var.vpc_id
-
-  # THIS IS THE FIX for the "pull access denied" error.
-  # It allows all services inside your VPC (like DNS) to talk to the endpoints.
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    # This now correctly uses the data source we added at the top
-    cidr_blocks = [data.aws_vpc.main.cidr_block]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.app_name}-vpc-endpoints-sg"
-  }
-}
 
 
 # --- LOAD BALANCER ---
@@ -223,8 +194,7 @@ resource "aws_network_acl_rule" "allow_public_http_inbound" {
 
 # --- VPC ENDPOINT INFRASTRUCTURE ---
 
-# Gateway Endpoint for S3 (for image layers)
-# This fixes the main timeout error
+# Gateway Endpoint for S3 (free, speeds up ECR image layer pulls)
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = var.vpc_id
   service_name      = "com.amazonaws.${var.region}.s3"
@@ -232,33 +202,5 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_endpoint_type = "Gateway"
 }
 
-# Interface Endpoint for STS (Authentication)
-# This fixes authentication errors
-resource "aws_vpc_endpoint" "sts" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.sts"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = var.public_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-}
-
-# Interface Endpoint for ECR API (Authentication)
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.ecr.api"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = var.public_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-}
-
-# Interface Endpoint for ECR Docker Registry (Manifest pull)
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.ecr.dkr"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = var.public_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-}
+# NOTE: Interface endpoints for STS, ECR API, ECR DKR removed.
+# Public subnets have internet access, so these $7.30/month endpoints are unnecessary.

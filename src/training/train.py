@@ -70,6 +70,8 @@ class YOLOTrainer:
                 name=f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 save=True,
                 val=True,
+                patience=self.config["training"].get("early_stopping_patience", 50),
+                freeze=self.config["training"].get("freeze", None),
             )
 
             # ✅ Step 3: Locate the new best.pt

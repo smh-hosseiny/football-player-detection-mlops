@@ -4,7 +4,7 @@ resource "aws_ecs_cluster" "main" {
   
   setting {
     name  = "containerInsights"
-    value = "enabled"
+    value = "disabled"
   }
   
   tags = {
@@ -53,6 +53,14 @@ resource "aws_launch_template" "ecs" {
     systemctl enable ecs
   EOF
   )
+
+  instance_market_options {
+    market_type = "spot"
+    spot_options {
+      max_price          = "0.015"
+      spot_instance_type = "one-time"
+    }
+  }
 
   block_device_mappings {
     device_name = "/dev/xvda"

@@ -16,23 +16,12 @@
 
 ---
 
-This repository contains a full-stack, production-ready MLOps pipeline for detecting football players in images and videos. It leverages state-of-the-art tools to automate the entire lifecycle of a machine learning model, from training and experiment tracking to deployment and monitoring.
+This repository contains a production-ready MLOps pipeline for detecting football players in images and videos using **YOLOv11**.
 
-The system uses a **YOLOv11** model for high-performance object detection, served via a scalable **FastAPI** backend. The infrastructure is defined as code using **Terraform** and deployed on **AWS**. A **CI/CD pipeline** with **GitHub Actions** automates the build, test, and deployment process to a containerized environment on **Amazon ECS**. **Prometheus** and **Grafana** provide robust monitoring of model performance and system health.
+**Stack**: FastAPI backend, Terraform infrastructure on AWS (ECS), GitHub Actions CI/CD, Prometheus/Grafana monitoring.
 
 The live application can be accessed at: **[https://api.playersdetect.com](https://api.playersdetect.com)**
 
-## Project Tech Stack
-
-- **Model**: YOLOv11 (via ultralytics)
-- **Experiment Tracking**: MLflow
-- **API**: FastAPI
-- **Containerization**: Docker
-- **Cloud Provider**: AWS
-- **Infrastructure as Code (IaC)**: Terraform
-- **CI/CD**: GitHub Actions
-- **Deployment**: AWS ECS on EC2
-- **Monitoring**: Prometheus & Grafana
 
 ## Part 1: Local Development & Setup
 
@@ -83,32 +72,31 @@ The `docker-compose.yml` file includes an MLflow server for experiment tracking.
 
 ### Step 4: Run the API Locally
 
-Test the inference API on `http://localhost:8000` using the inference Docker container or directly via `uvicorn`.
+Test the inference API on `http://localhost:8000`. You can interact with the web UI, where you can upload images or videos to see detections.
 
-1. **Build and Run the API Container**:
-   ```bash
-   bash scripts/build_inference.sh
-   bash scripts/run_inference.sh
-   ```
+**Option A: Docker Container**
+```bash
+bash scripts/build_inference.sh
+bash scripts/run_inference.sh
+```
 
-   Alternatively, run the API directly:
-   ```bash
-   uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
-   ```
+**Option B: Direct with uvicorn** (no Docker required)
+```bash
+uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-2. **Test the API**: Access `http://localhost:8000` to interact with the web UI, where you can upload images or videos to see detections.
+
+#### Video Streaming Inference
+
+Video processing uses WebSocket streaming with instant playback as frames are processed. Adjustable sliders control frame skipping (1-10) and confidence threshold in real-time.
 
 ## Part 2: Infrastructure as Code (IaC) with Terraform
 
-The Terraform configuration automates the provisioning of AWS resources for a scalable and secure deployment.
+Terraform provisions the AWS infrastructure: ECS on EC2 with Auto Scaling, Application Load Balancer with HTTPS, ECR, Route53, and EventBridge Scheduler for automatic start/stop.
 
-### Key Cost-Saving Strategies
+Cost optimizations include Spot instances, scheduled scaling (10 AM - 5 PM), and right-sized `t3a.small` instances.
 
-- **Compute**: The `aws_ecs_task_definition` uses 1024 CPU and 1536 MB memory, optimized for the YOLOv11 model on CPU. The `aws_launch_template` uses `t3a.small` instances (AMD-based, cost-effective).
-- **Spot Instances**: The Auto Scaling Group (`aws_autoscaling_group`) is configured to support EC2 Spot Instances, which can save up to 90% on compute costs. Add a `spot_options` block to the `aws_launch_template` for further savings.
-- **Networking**: Private subnets are used for ECS tasks, and public subnets for the Application Load Balancer (ALB), ensuring security without additional costs.
-
-### Steps to Deploy Infrastructure
+### Deploy
 
 1. **Configure AWS Credentials**: Ensure the AWS CLI is configured with the necessary permissions.
    ```bash
@@ -144,42 +132,17 @@ The CI/CD pipeline automates testing, building, and deployment on every push to 
 - **Build, Tag, and Push**: Builds the inference Docker image and pushes it to ECR.
 - **Deploy with Terraform**: Applies Terraform changes to update infrastructure and the ECS service with the new Docker image.
 
-### Setup Steps
+### Setup
 
-1. **Create the Workflow File**: Ensure `ci/cd/infrastructure.yml` is in the `.github/workflows/` directory.
-
-2. **Configure AWS OIDC and IAM Role**:
-   - In AWS IAM, create a role that GitHub Actions can assume via OIDC (`token.actions.githubusercontent.com`).
-   - Attach permissions, such as:
-     - `AmazonEC2ContainerRegistryPowerUser` (for ECR).
-     - `AmazonECSFullAccess` or a custom ECS deploy policy.
-   - Update the trust policy to allow your GitHub repository (using repo:<OWNER>/<REPO>:ref:refs/heads/main) to assume this role
-   - The workflow will authenticate using the IAM role via the aws-actions/configure-aws-credentials action with role-to-assume.
-
-3. **Automatic CI/CD**: Every push to the `main` branch will now automatically:
-   - Run tests and linting.
-   - Build and push the Docker image to ECR.
-   - Deploy to ECS using the assumed IAM role.
+1. Create an IAM role for GitHub Actions with OIDC trust policy (`token.actions.githubusercontent.com`) and ECR/ECS permissions.
+2. Every push to `main` automatically runs tests, builds the Docker image, pushes to ECR, and deploys to ECS.
 
 ## Part 4: Monitoring with Prometheus and Grafana
 
-Monitoring is a key MLOps practice, and the application is instrumented with Prometheus and Grafana for real-time insights into performance and health.
+The API exposes a `/metrics` endpoint with `predictions_total` and `prediction_latency_seconds` metrics.
 
-### Prometheus Metrics
+```bash
+docker-compose up -d prometheus grafana
+```
 
-The FastAPI app (`api/main.py`) exposes a `/metrics` endpoint with the following metrics:
-- `predictions_total`: Total number of predictions made.
-- `prediction_latency_seconds`: Histogram of prediction times.
-
-### Grafana Dashboard
-
-The `docker-compose.yml` includes services for Prometheus and Grafana to visualize metrics locally.
-
-1. **Start Monitoring Services**:
-   ```bash
-   docker-compose up -d prometheus grafana
-   ```
-
-2. **Access Prometheus**: Open `http://localhost:9090` to view raw metrics.
-
-
+Access Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.

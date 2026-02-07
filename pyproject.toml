@@ -25,3 +25,6 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]  # Look for packages in the 'src' directory
+
+[tool.isort]
+profile = "black"

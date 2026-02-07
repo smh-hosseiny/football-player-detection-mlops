@@ -1,6 +1,6 @@
 model:
-  architecture: "yolo11n.pt"  # Medium model for balance
-  img_size: 640
+  architecture: "yolo11s.pt"  # Small model, better capacity for small objects
+  img_size: 1280
   name: "object_detector_v1"
 
 data:
@@ -10,15 +10,15 @@ data:
   test_path: "./src/data/football_players_detection/test/"
 
 training:
-  batch_size: 32           
-  epochs: 100               
-  learning_rate: 0.0003    
-  lr_scheduler: cosine     
-  early_stopping_patience: 7   
+  batch_size: 12
+  epochs: 300
+  learning_rate: 0.0003
+  lr_scheduler: cosine
+  early_stopping_patience: 30
   freeze: [0,1,2]          # Freeze backbone stages; prevents overwriting pretrained features
 
 
-device: "cuda:1"  # or "cpu" for local testing
+device: "cuda:0"  # Maps to physical GPU set by CUDA_VISIBLE_DEVICES
 
 output:
   project_dir: "../runs_detect"

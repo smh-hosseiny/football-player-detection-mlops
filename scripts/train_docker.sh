@@ -17,17 +17,23 @@ fi
 docker run -d --name mlflow-server --network mlops_network \
   -p 5000:5000 \
   -v "$PWD/mlruns:/mlruns" \
-  python:3.9-slim \
-  bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:/mlruns"
+  ghcr.io/mlflow/mlflow:latest \
+  mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:///mlruns
 
+# Wait for MLflow server to be ready
+echo "Waiting for MLflow server..."
+until curl -sf http://localhost:5000/ > /dev/null 2>&1; do
+  sleep 2
+done
+echo "MLflow server is ready."
 
 # Run training container with MLflow tracking URI pointing to MLflow server
 docker run --rm --runtime=nvidia --gpus all  --network mlops_network \
-  --shm-size=2g \
+  --shm-size=8g \
   -v "$PWD/src/data/football_players_detection:/app/src/data/football_players_detection" \
   -v "$PWD/src/models:/app/src/models" \
   -v "$PWD/runs_detect:/app/runs_detect" \
-  -e CUDA_VISIBLE_DEVICES=0 \
+  -e CUDA_VISIBLE_DEVICES=1 \
   -e MLFLOW_TRACKING_URI=http://172.17.0.1:5000 \
   yolo-trainer \
   python src/training/train.py --config configs/training_config.yaml
