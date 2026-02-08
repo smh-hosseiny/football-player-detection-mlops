@@ -1,0 +1,17 @@
+# Core ML & CV
+ultralytics==8.3.205
+opencv-python-headless==4.8.0.76
+pillow==10.0.1
+numpy==1.24.3
+
+# API & Web
+fastapi==0.119.0
+starlette==0.48.0
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.4.2
+aiofiles==23.2.1
+Jinja2==3.1.2
+
+# Monitoring
+prometheus-client==0.18.0
