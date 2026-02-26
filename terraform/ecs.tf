@@ -15,14 +15,14 @@ resource "aws_ecs_cluster" "main" {
 
 
 data "aws_ssm_parameter" "ecs_ami" {
-  name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+  name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
 }
 
-# Launch Template (CPU-only, Spot-ready)
+# Launch Template (GPU Spot-ready)
 resource "aws_launch_template" "ecs" {
   name_prefix   = "${var.app_name}-ecs-"
   image_id      = data.aws_ssm_parameter.ecs_ami.value
-  instance_type = "t3a.small"  # CPU-only instance
+  instance_type = "g4dn.xlarge"  # GPU instance (NVIDIA T4)
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance.name
@@ -45,19 +45,21 @@ resource "aws_launch_template" "ecs" {
     # Force ECS cluster via metadata
     mkdir -p /etc/ecs
     echo "ECS_CLUSTER=${aws_ecs_cluster.main.name}" > /etc/ecs/ecs.config
+    echo "ECS_ENABLE_GPU_SUPPORT=true" >> /etc/ecs/ecs.config
     echo "ECS_ENABLE_TASK_IAM_ROLE=true" >> /etc/ecs/ecs.config
     echo "ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true" >> /etc/ecs/ecs.config
     echo "ECS_ENABLE_CONTAINER_METADATA=true" >> /etc/ecs/ecs.config
 
     # Start agent
     systemctl enable ecs
+    systemctl start ecs
   EOF
   )
 
   instance_market_options {
     market_type = "spot"
     spot_options {
-      max_price          = "0.015"
+      max_price          = "0.25"
       spot_instance_type = "one-time"
     }
   }
@@ -65,7 +67,7 @@ resource "aws_launch_template" "ecs" {
   block_device_mappings {
     device_name = "/dev/xvda"
     ebs {
-      volume_size = 30
+      volume_size = 50
       volume_type = "gp3"
     }
   }
@@ -264,8 +266,8 @@ resource "aws_ecs_task_definition" "app" {
   family                   = var.app_name
   network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
-  cpu                      = "1500"  
-  memory                   = "1500"   
+  cpu                      = "3500"
+  memory                   = "14000"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
@@ -277,7 +279,11 @@ resource "aws_ecs_task_definition" "app" {
       containerPort = 8000
       protocol      = "tcp"
     }]
-  
+
+    resourceRequirements = [
+      { type = "GPU", value = "1" }
+    ]
+
     logConfiguration = {
       logDriver = "awslogs"
       options = {

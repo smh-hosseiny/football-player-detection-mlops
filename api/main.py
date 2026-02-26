@@ -86,7 +86,8 @@ class ObjectDetector:
 
     def _run_inference(self, image: np.ndarray):
         """Actual inference logic"""
-        return self.model(image)
+        half = self.device != "cpu"
+        return self.model(image, imgsz=640, half=half, device=self.device)
 
     def _process_results(self, results) -> Dict:
         """Process YOLO results to JSON format"""
@@ -111,11 +112,22 @@ class ObjectDetector:
         }
 
 
+def resolve_device() -> str:
+    if torch.cuda.is_available():
+        device = "cuda:0"
+        logger.info(
+            "CUDA available (torch CUDA %s): %s",
+            torch.version.cuda,
+            torch.cuda.get_device_name(0),
+        )
+        return device
+
+    logger.warning("CUDA not available, falling back to CPU inference")
+    return "cpu"
+
+
 # Initialize model
-detector = ObjectDetector(
-    model_path="src/models/best.pt",
-    device="cuda" if torch.cuda.is_available() else "cpu",
-)
+detector = ObjectDetector(model_path="src/models/best.pt", device=resolve_device())
 
 TEMP_VIDEO_PREFIX = "temp_"
 TEMP_VIDEO_SUFFIX = ".mp4"
