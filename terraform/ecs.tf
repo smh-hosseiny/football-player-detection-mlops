@@ -1,12 +1,12 @@
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-cluster"
-  
+
   setting {
     name  = "containerInsights"
     value = "disabled"
   }
-  
+
   tags = {
     Name        = "${var.app_name}-cluster"
     Environment = var.environment
@@ -20,9 +20,10 @@ data "aws_ssm_parameter" "ecs_ami" {
 
 # Launch Template (GPU Spot-ready)
 resource "aws_launch_template" "ecs" {
-  name_prefix   = "${var.app_name}-ecs-"
-  image_id      = data.aws_ssm_parameter.ecs_ami.value
-  instance_type = "g4dn.xlarge"  # GPU instance (NVIDIA T4)
+  name_prefix            = "${var.app_name}-ecs-"
+  image_id               = data.aws_ssm_parameter.ecs_ami.value
+  instance_type          = "g4dn.xlarge" # GPU instance (NVIDIA T4)
+  update_default_version = true
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance.name
@@ -30,8 +31,8 @@ resource "aws_launch_template" "ecs" {
 
   network_interfaces {
     associate_public_ip_address = true
-    security_groups            = [aws_security_group.ecs_instances.id] 
-    delete_on_termination      = true
+    security_groups             = [aws_security_group.ecs_instances.id]
+    delete_on_termination       = true
   }
 
   metadata_options {
@@ -85,20 +86,20 @@ resource "aws_launch_template" "ecs" {
 
 
 resource "aws_autoscaling_group" "ecs" {
-  name                = "${var.app_name}-asg"
-  vpc_zone_identifier = var.public_subnet_ids
-  min_size            = 0
-  max_size            = 1
-  desired_capacity    = 1
-  health_check_type   = "EC2"
+  name                      = "${var.app_name}-asg"
+  vpc_zone_identifier       = var.public_subnet_ids
+  min_size                  = 0
+  max_size                  = 1
+  desired_capacity          = 1
+  health_check_type         = "EC2"
   health_check_grace_period = 300
 
-  protect_from_scale_in = false
+  protect_from_scale_in     = false
   wait_for_capacity_timeout = "20m"
 
   launch_template {
     id      = aws_launch_template.ecs.id
-    version = "$Latest"
+    version = tostring(aws_launch_template.ecs.latest_version)
   }
 
   instance_refresh {
@@ -106,7 +107,6 @@ resource "aws_autoscaling_group" "ecs" {
     preferences {
       min_healthy_percentage = 0
     }
-    #triggers = ["launch_template"]
   }
 
   # Tag instances
@@ -177,7 +177,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 # ECS Instance Role
 resource "aws_iam_role" "ecs_instance" {
   name = "${var.app_name}-ecs-instance-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -217,7 +217,7 @@ resource "aws_iam_instance_profile" "ecs_instance" {
 # ECS Task Execution Role
 resource "aws_iam_role" "ecs_task_execution" {
   name = "${var.app_name}-ecs-task-execution-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -240,7 +240,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
 # ECS Task Role
 resource "aws_iam_role" "ecs_task" {
   name = "${var.app_name}-ecs-task-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -258,7 +258,7 @@ resource "aws_iam_role" "ecs_task" {
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.app_name}"
-  retention_in_days = 7  # Cost-efficient log retention
+  retention_in_days = 7 # Cost-efficient log retention
 }
 
 # ECS Task Definition (optimized for YOLO11n)
@@ -316,13 +316,13 @@ resource "aws_ecs_service" "app" {
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = 1
   lifecycle {
-    ignore_changes = [desired_count]
+    ignore_changes = [desired_count, task_definition]
   }
 
   capacity_provider_strategy {
     capacity_provider = aws_ecs_capacity_provider.main.name
     weight            = 100
-    base              = 1  # Ensure at least 1 task runs
+    base              = 1 # Ensure at least 1 task runs
   }
 
   load_balancer {
@@ -335,7 +335,7 @@ resource "aws_ecs_service" "app" {
 
   deployment_circuit_breaker {
     enable   = true
-    rollback = true
+    rollback = false
   }
 
   tags = {
@@ -356,13 +356,13 @@ data "aws_route53_zone" "main" {
 # Output the zone ID and nameservers
 output "route53_zone_id" {
   description = "Route53 hosted zone ID"
-  value       = data.aws_route53_zone.main.zone_id 
+  value       = data.aws_route53_zone.main.zone_id
 }
 
 
 output "route53_nameservers" {
   description = "Route53 nameservers - configure these at your domain registrar"
-  value       = data.aws_route53_zone.main.name_servers 
+  value       = data.aws_route53_zone.main.name_servers
 }
 
 
@@ -374,7 +374,7 @@ provider "aws" {
 
 # ACM Certificate for api.playersdetect.com
 resource "aws_acm_certificate" "app" {
-  provider = aws.us-east-1
+  provider          = aws.us-east-1
   domain_name       = "api.playersdetect.com"
   validation_method = "DNS"
 
@@ -388,9 +388,9 @@ resource "aws_acm_certificate" "app" {
 resource "aws_route53_record" "acm_validation" {
   for_each = {
     for dvo in aws_acm_certificate.app.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      type   = dvo.resource_record_type
-      value  = dvo.resource_record_value
+      name  = dvo.resource_record_name
+      type  = dvo.resource_record_type
+      value = dvo.resource_record_value
     }
   }
 
@@ -406,7 +406,7 @@ resource "aws_route53_record" "acm_validation" {
 resource "aws_acm_certificate_validation" "app" {
   certificate_arn         = aws_acm_certificate.app.arn
   validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
-  
+
   timeouts {
     create = "15m"
   }
@@ -448,7 +448,7 @@ resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
-  
+
   default_action {
     type = "redirect"
     redirect {
@@ -487,15 +487,15 @@ resource "aws_iam_role_policy" "scheduler_ecs" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "ecs:UpdateService"
+        Effect   = "Allow"
+        Action   = "ecs:UpdateService"
         Resource = aws_ecs_service.app.id # Specific to your service
       }
     ]
   })
 }
 
-# --- STOP SCHEDULE (5 PM Toronto Time) ---
+# --- STOP SCHEDULE (12 PM Toronto Time) ---
 resource "aws_scheduler_schedule" "stop_ecs" {
   name       = "${var.app_name}-stop-nightly"
   group_name = "default"
@@ -504,9 +504,9 @@ resource "aws_scheduler_schedule" "stop_ecs" {
     mode = "OFF"
   }
 
-  # Cron: Minute 0, Hour 17 (5 PM), Every Day
-  schedule_expression = "cron(0 17 * * ? *)"
-  
+  # Cron: Minute 0, Hour 12 (12 PM), Every Day
+  schedule_expression = "cron(0 12 * * ? *)"
+
   # NATIVE TIMEZONE SUPPORT! No UTC math needed.
   schedule_expression_timezone = "America/Toronto"
 
@@ -522,7 +522,7 @@ resource "aws_scheduler_schedule" "stop_ecs" {
   }
 }
 
-# --- START SCHEDULE (10 AM Toronto Time) ---
+# --- START SCHEDULE (11 AM Toronto Time) ---
 resource "aws_scheduler_schedule" "start_ecs" {
   name       = "${var.app_name}-start-morning"
   group_name = "default"
@@ -531,8 +531,8 @@ resource "aws_scheduler_schedule" "start_ecs" {
     mode = "OFF"
   }
 
-  # Cron: Minute 0, Hour 10 (10 AM), Every Day
-  schedule_expression = "cron(0 10 * * ? *)"
+  # Cron: Minute 0, Hour 11 (11 AM), Every Day
+  schedule_expression          = "cron(0 11 * * ? *)"
   schedule_expression_timezone = "America/Toronto"
 
   target {

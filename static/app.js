@@ -16,7 +16,8 @@ class PlayerDetectionApp {
       ws: null,
       sessionId: null,
       streamedDetections: [],
-      videoMeta: null
+      videoMeta: null,
+      lastRenderedDetections: []
     };
 
     this.initElements();
@@ -29,6 +30,7 @@ class PlayerDetectionApp {
     this.canvas = document.getElementById('canvas');
     this.video = document.getElementById('video');
     this.ctx = this.canvas.getContext('2d');
+    this.ctx.imageSmoothingEnabled = true;
     this.statusEl = document.getElementById('status');
     this.errorEl = document.getElementById('error-container');
     this.playBtn = document.getElementById('play');
@@ -173,6 +175,7 @@ class PlayerDetectionApp {
     this.state.mediaUrl = videoUrl;
 
     this.video.src = videoUrl;
+    this.video.muted = true;
     await this.waitForVideoMetadata();
     this.setupCanvas(this.video.videoWidth, this.video.videoHeight);
 
@@ -440,12 +443,54 @@ class PlayerDetectionApp {
     this.ctx.restore();
   }
 
+  getDetectionsForFrame(frameIndex, allDetections) {
+    const direct = allDetections[frameIndex];
+    if (Array.isArray(direct)) return direct;
+
+    for (let i = frameIndex - 1; i >= 0; i -= 1) {
+      if (Array.isArray(allDetections[i])) return allDetections[i];
+    }
+
+    return [];
+  }
+
+  smoothDetections(detections) {
+    const alpha = 0.35;
+    const sortFn = (a, b) => {
+      if (a.class_name !== b.class_name) return a.class_name.localeCompare(b.class_name);
+      return a.bbox[0] - b.bbox[0];
+    };
+
+    const current = [...detections].sort(sortFn);
+    const previous = [...(this.state.lastRenderedDetections || [])].sort(sortFn);
+    const canBlend =
+      current.length === previous.length &&
+      current.every((d, idx) => d.class_name === previous[idx]?.class_name);
+
+    if (!canBlend) {
+      this.state.lastRenderedDetections = current;
+      return current;
+    }
+
+    const blended = current.map((det, idx) => {
+      const prev = previous[idx];
+      const bbox = det.bbox.map((value, i) => prev.bbox[i] + (value - prev.bbox[i]) * alpha);
+      const confidence = prev.confidence + (det.confidence - prev.confidence) * alpha;
+      return { ...det, bbox, confidence };
+    });
+
+    this.state.lastRenderedDetections = blended;
+    return blended;
+  }
+
 
   createVideoController(detections, video) {
     const fps = detections.fps || 30;
     const frameDuration = 1 / fps;
     let playing = false;
     let rafId = null;
+    let lastFrame = -1;
+    let activeDetections = [];
 
     const render = () => {
       if (!playing) return;
@@ -456,11 +501,15 @@ class PlayerDetectionApp {
         return;
       }
 
-      const frameDetections = detections.video_detections[currentFrame] || [];
+      if (currentFrame !== lastFrame) {
+        lastFrame = currentFrame;
+        const frameDetections = this.getDetectionsForFrame(currentFrame, detections.video_detections);
+        activeDetections = this.smoothDetections(frameDetections);
+      }
 
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.drawImage(video, 0, 0);
-      this.drawDetections(frameDetections, video.videoWidth, video.videoHeight);
+      this.drawDetections(activeDetections, video.videoWidth, video.videoHeight);
 
       rafId = requestAnimationFrame(render);
     };
@@ -484,6 +533,7 @@ class PlayerDetectionApp {
       cancelAnimationFrame(rafId);
       video.pause();
       video.currentTime = 0;
+      this.state.lastRenderedDetections = [];
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     };
 
@@ -492,7 +542,7 @@ class PlayerDetectionApp {
 
 
   setProcessingState(processing) {
-    this.isProcessing = processing;
+    this.state.isProcessing = processing;
     this.uploadInput.disabled = processing;
     this.enableControls(!processing);
     
