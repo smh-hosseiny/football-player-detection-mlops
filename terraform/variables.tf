@@ -3,7 +3,7 @@
 variable "region" {
   description = "AWS region"
   type        = string
-  default     = "us-east-1"   # change if you use another region
+  default     = "us-east-1" # change if you use another region
 }
 
 variable "app_name" {
@@ -27,18 +27,42 @@ variable "aws_region" {
 variable "vpc_id" {
   type        = string
   description = "The ID of the VPC to deploy resources into."
-  default     = "vpc-00ace309c9dcc098b"  
+  default     = "vpc-00ace309c9dcc098b"
 }
 
 variable "private_subnet_ids" {
   type        = list(string)
   description = "A list of private subnet IDs for the ECS instances and tasks."
   # We are moving to a public subnet, so this will no longer be used.
-  default     = []
+  default = []
 }
 
 variable "public_subnet_ids" {
   type        = list(string)
   description = "A list of public subnet IDs for the resources."
-  default     = ["subnet-0d1a6f5d4f680cc95", "subnet-0eb0dee23d6db07a7"]  
+  default     = ["subnet-0d1a6f5d4f680cc95", "subnet-0eb0dee23d6db07a7"]
+}
+
+variable "ecs_instance_type" {
+  type        = string
+  description = "EC2 instance type for ECS capacity."
+  default     = "g4dn.xlarge"
+}
+
+variable "enable_spot_instances" {
+  type        = bool
+  description = "Whether ECS EC2 capacity should use Spot market."
+  default     = false
+}
+
+variable "spot_max_price" {
+  type        = string
+  description = "Max Spot price for ECS instances when Spot is enabled."
+  default     = "0.25"
+}
+
+variable "enable_scheduling" {
+  description = "Enable daily start/stop schedules. Set to false to pause the server."
+  type        = bool
+  default     = false
 }

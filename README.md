@@ -92,9 +92,21 @@ Video processing uses WebSocket streaming with instant playback as frames are pr
 
 ## Part 2: Infrastructure as Code (IaC) with Terraform
 
-Terraform provisions the AWS infrastructure: ECS on EC2 with Auto Scaling, Application Load Balancer with HTTPS, ECR, Route53, and EventBridge Scheduler for automatic start/stop.
+Terraform provisions the AWS infrastructure: ECS on EC2 with Auto Scaling, CloudFront + ACM + Route53 for HTTPS, ECR, and EventBridge Scheduler for automatic start/stop.
 
-Cost optimizations include Spot instances, scheduled scaling (10 AM - 5 PM), and right-sized `t3a.small` instances.
+Cost optimization is mainly schedule-based (service runs 1 hour/day). Spot is supported but currently optional and disabled by default for reliability.
+
+### Current AWS Setup
+
+`api.playersdetect.com` -> Route 53 -> CloudFront (TLS) -> `origin.playersdetect.com` -> Elastic IP -> ECS EC2 host (`g4dn.xlarge`) -> FastAPI on `:8000`.
+
+Health check:
+
+```bash
+curl -sS https://api.playersdetect.com/health
+```
+
+For deeper architecture notes, see `docs/aws-infrastructure.md`.
 
 ### Deploy
 
@@ -117,7 +129,7 @@ Cost optimizations include Spot instances, scheduled scaling (10 AM - 5 PM), and
    terraform apply
    ```
 
-   This creates the ECR repository, ECS cluster, ALB, and associated networking and IAM roles.
+   This creates the ECR repository, ECS cluster, CloudFront/Route53 resources, and associated networking and IAM roles.
 
 ## Part 3: CI/CD with GitHub Actions
 
